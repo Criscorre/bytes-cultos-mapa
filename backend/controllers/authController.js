@@ -162,64 +162,38 @@ exports.getMe = async (req, res) => {
 };
 
 exports.registerAdmin = async (req, res) => {
-  const { email, password, municipality_id } = req.body;
-    // If Firebase user present, fetch from Firestore
-    if (req.user && req.user.uid && admin && admin.firestore) {
-      const firestore = admin.firestore();
-      const userDoc = await firestore.collection('users').doc(req.user.uid).get();
-      if (!userDoc.exists) return res.status(404).json({ message: 'Usuario no encontrado.' });
-      const user = userDoc.data();
+  try {
+    const { email, password, municipality_id } = req.body;
 
-      let institution = null;
-      if (user.role === 'institution') {
-        const instSnap = await firestore.collection('institutions').where('user_uid', '==', req.user.uid).limit(1).get();
-        if (!instSnap.empty) {
-          const inst = instSnap.docs[0];
-          institution = { id: inst.id, ...inst.data() };
-          // Fetch related collections
-          const respSnap = await firestore.collection('responsibles').where('institution_id', '==', inst.id).limit(1).get();
-          const saSnap = await firestore.collection('social_actions').where('institution_id', '==', inst.id).limit(1).get();
-          const snSnap = await firestore.collection('social_networks').where('institution_id', '==', inst.id).limit(1).get();
-
-          institution.responsible = !respSnap.empty ? respSnap.docs[0].data() : null;
-          institution.socialActions = !saSnap.empty ? saSnap.docs[0].data() : null;
-          institution.socialNetworks = !snSnap.empty ? snSnap.docs[0].data() : null;
-        }
-      }
-
-      return res.json({ user: Object.assign({ uid: req.user.uid, email: req.user.email }, user), institution });
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email y password son requeridos.' });
     }
 
-    // Fallback to SQLite-based user
-    const user = await getQuery('SELECT id, email, role, municipality_id, approved, created_at FROM users WHERE id = ?', [req.user.id]);
-    if (!user) {
-      return res.status(404).json({ message: 'Usuario no encontrado.' });
+    if (!admin || !admin.auth || !admin.firestore) {
+      return res.status(500).json({ message: 'Firebase Admin no está inicializado.' });
     }
 
-    let institution = null;
-    if (user.role === 'institution') {
-      institution = await getQuery('SELECT * FROM institutions WHERE user_id = ?', [user.id]);
-      if (institution) {
-        // Fetch sub-details
-        const resp = await getQuery('SELECT * FROM responsibles WHERE institution_id = ?', [institution.id]);
-        const sa = await getQuery('SELECT * FROM social_actions WHERE institution_id = ?', [institution.id]);
-        const sn = await getQuery('SELECT * FROM social_networks WHERE institution_id = ?', [institution.id]);
-        const photos = await getQuery('SELECT * FROM photos WHERE institution_id = ?', [institution.id]);
+    // Create Firebase Auth user for admin
+    const userRecord = await admin.auth().createUser({ email, password });
+    const uid = userRecord.uid;
 
-        institution.responsible = resp;
-        institution.socialActions = sa;
-        institution.socialNetworks = sn;
-        institution.photos = photos;
-      }
-    }
+    // Set custom claims
+    await admin.auth().setCustomUserClaims(uid, { role: 'admin', municipality_id: municipality_id || null });
 
-    return res.json({ user, institution });
+    // Create Firestore user document
+    const firestore = admin.firestore();
+    await firestore.collection('users').doc(uid).set({
+      email,
+      role: 'admin',
+      municipality_id: municipality_id || null,
+      approved: 1,
+      created_at: admin.firestore.FieldValue.serverTimestamp()
     });
 
-    return res.status(201).json({ message: 'Oficina Municipal registrada correctamente con rol Administrador.', uid });
+    return res.status(201).json({ message: 'Administrador creado correctamente.', uid });
   } catch (err) {
     console.error('Register admin error:', err);
-    return res.status(500).json({ message: 'Error interno al registrar la oficina municipal.' });
+    return res.status(500).json({ message: 'Error interno al registrar el administrador.' });
   }
 };
 

@@ -1,0 +1,29 @@
+name: Migrate SQLite to Firestore
+
+on:
+  workflow_dispatch:
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies (backend)
+        working-directory: ./backend
+        run: npm install --production
+
+      - name: Write Firebase service account
+        run: |
+          echo "$FIREBASE_SERVICE_ACCOUNT" > backend/serviceAccountKey.json
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+
+      - name: Run migration script
+        run: node backend/scripts/migrate-sqlite-to-firestore.js
