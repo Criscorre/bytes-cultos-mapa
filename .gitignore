@@ -1,0 +1,13 @@
+node_modules/
+**/node_modules/
+frontend/.next/
+backend/database.sqlite
+backend/serviceAccountKey.json
+frontend/.env.local
+.env
+.DS_Store
+cultosig-project.zip
+*.log
+npm-debug.log*
+package-lock.json
+yarn.lock
