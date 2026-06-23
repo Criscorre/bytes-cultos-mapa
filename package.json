@@ -1,0 +1,21 @@
+{
+  "name": "bytes-cultos-mapa",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm install --production",
+    "start:server": "cd server && npm run start",
+    "migrate": "node scripts/migrate-sqlite-to-firestore.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

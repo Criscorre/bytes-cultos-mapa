@@ -1,51 +1,216 @@
-# OFICINA DE CULTOS — Preparación para despliegue
+# OFICINA DE CULTOS — Estructura monorepo para frontend y backend
 
-Resumen rápido: el repo está preparado para usar Firebase Auth + Firestore. Incluye un script de migración y un workflow de GitHub Actions para ejecutar la migración cuando añadas el secret `FIREBASE_SERVICE_ACCOUNT`.
+Este repositorio está organizado como monorepo con la siguiente estructura:
 
-Qué falta (acciones que debes ejecutar localmente o añadir en GitHub):
+- `/client` — frontend Next.js
+- `/server` — backend Express/Node + Firebase Admin
+- `/scripts` — scripts de migración y utilidades que no forman parte del cliente
 
-- Añadir secret `FIREBASE_SERVICE_ACCOUNT` (JSON) en GitHub: Settings → Secrets and variables → Actions → New repository secret. Nombre: `FIREBASE_SERVICE_ACCOUNT`.
-- Añadir `FIREBASE_PROJECT_ID` como secret o variable si lo necesitas.
-- Crear el repositorio en GitHub y empujar el código (puedes usar `gh` o un Personal Access Token).
+## 1. Estructura propuesta
 
-Comandos sugeridos (PowerShell):
-
-1) Usando `gh` (recomendado si lo tenés instalado y autenticado):
-
-```powershell
-gh repo create bytescreativoss-debug/Bytes-cultos --public --source . --remote origin --push
+```
+/ (raíz)
+  /client
+    package.json
+    next.config.mjs
+    src/
+    public/
+    .env.local
+  /server
+    package.json
+    server.js
+    firebaseAdmin.js
+    config/
+    controllers/
+    middlewares/
+    routes/
+    database.sqlite
+    .env
+  /scripts
+    migrate-sqlite-to-firestore.js
+  .gitignore
+  docker-compose.yml
+  Procfile
+  package.json
+  README.md
 ```
 
-2) Usando `git` con remote existente:
+## 2. Archivos que mover
 
-```powershell
-git remote add origin https://github.com/bytescreativoss-debug/Bytes-cultos.git
-git branch -M main
-git add .
-git commit -m "Prep: Docker + Firebase integration, initializers and middleware"
-git push -u origin main
+### Mover a `/client`
+- Todo lo que estaba en `frontend/`
+- `frontend/package.json` → `client/package.json`
+- `frontend/next.config.mjs` → `client/next.config.mjs`
+- `frontend/src/` → `client/src/`
+- `frontend/public/` → `client/public/`
+- `frontend/.env.local` → `client/.env.local`
+- `frontend/Dockerfile` → `client/Dockerfile`
+- `frontend/jsconfig.json` → `client/jsconfig.json`
+- `frontend/postcss.config.mjs` → `client/postcss.config.mjs`
+- `frontend/tailwind.config.js` → `client/tailwind.config.js`
+- `frontend/.eslintrc.json` → `client/.eslintrc.json`
+
+### Mover a `/server`
+- Todo lo que estaba en `backend/`, excepto el script de migración
+- `backend/package.json` → `server/package.json`
+- `backend/server.js` → `server/server.js`
+- `backend/firebaseAdmin.js` → `server/firebaseAdmin.js`
+- `backend/.env` → `server/.env`
+- `backend/database.sqlite` → `server/database.sqlite`
+- `backend/Dockerfile` → `server/Dockerfile`
+- `backend/config/` → `server/config/`
+- `backend/controllers/` → `server/controllers/`
+- `backend/middlewares/` → `server/middlewares/`
+- `backend/routes/` → `server/routes/`
+
+### Mover a `/scripts`
+- `backend/scripts/migrate-sqlite-to-firestore.js` → `scripts/migrate-sqlite-to-firestore.js`
+
+## 3. Archivos `package.json` necesarios
+
+### `package.json` raíz
+
+```json
+{
+  "name": "bytes-cultos-mapa",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "build:client": "cd client && npm run build",
+    "start:server": "cd server && npm run start",
+    "migrate": "node scripts/migrate-sqlite-to-firestore.js"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
 ```
 
-Si el push falla por permisos, crea un Personal Access Token (PAT) en GitHub con scope `repo` y usa `git push` con ese token (configurar credential helper o usar `https://<TOKEN>@github.com/...`).
+### `client/package.json`
 
-Ejecución de la migración localmente:
+Mantener el archivo actual de `frontend/package.json` sin cambios, pero renombrado a `client/package.json`.
 
-1) Coloca el JSON del service account en `backend/serviceAccountKey.json` O exportalo a la variable de entorno `FIREBASE_SERVICE_ACCOUNT`.
-2) Desde la raíz del proyecto:
+### `server/package.json`
 
-```powershell
-node backend/scripts/migrate-sqlite-to-firestore.js
+Mantener el archivo actual de `backend/package.json` sin cambios, pero renombrado a `server/package.json`.
+
+## 4. Ajustes de compatibilidad
+
+### `scripts/migrate-sqlite-to-firestore.js`
+
+Actualiza las rutas internas al nuevo layout:
+
+```js
+const admin = require('../server/firebaseAdmin');
+const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+
+const dbPath = path.join(__dirname, '..', 'server', 'database.sqlite');
 ```
 
-Ejecución de la migración via GitHub Actions:
+### `.gitignore`
 
-1) Subí el secret `FIREBASE_SERVICE_ACCOUNT` al repo.
-2) En la pestaña Actions → Migrate SQLite to Firestore → Run workflow (workflow_dispatch).
+Incluye estos paths nuevos:
 
-Despliegue (opciones recomendadas):
-- Vercel para frontend (Next.js). Añadir `NEXT_PUBLIC_FIREBASE_*` vars en el panel de Vercel.
-- Render o Heroku para backend; configurar variables `FIREBASE_SERVICE_ACCOUNT` y `FIREBASE_PROJECT_ID` en su panel.
+```
+node_modules/
+**/node_modules/
+client/.next/
+server/database.sqlite
+server/serviceAccountKey.json
+client/.env.local
+server/.env
+.env
+.DS_Store
+cultosig-project.zip
+*.log
+npm-debug.log*
+package-lock.json
+yarn.lock
+```
 
-Si querés, yo preparo workflows adicionales para desplegar automáticamente a Vercel/Render cuando hagas push — decime cuál preferís y yo lo agrego.
+### `docker-compose.yml`
 
-Contacto: pedime que genere el workflow de despliegue (Vercel/Render) o que te guíe para crear el repo y añadir secrets.
+Ajusta los contextos de construcción:
+
+```yaml
+services:
+  server:
+    build:
+      context: ./server
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server/database.sqlite:/usr/src/app/database.sqlite
+    environment:
+      - NODE_ENV=production
+      - JWT_SECRET=${JWT_SECRET}
+
+  client:
+    build:
+      context: ./client
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://localhost:5000/api
+    depends_on:
+      - server
+```
+
+### `Procfile`
+
+Para Heroku o similares:
+
+```text
+web: node server/server.js
+```
+
+### GitHub Actions migration workflow
+
+Actualiza los paths a `server` y `scripts`:
+
+```yaml
+working-directory: ./server
+run: npm install --production
+
+run: |
+  echo "$FIREBASE_SERVICE_ACCOUNT" > server/serviceAccountKey.json
+
+run: node scripts/migrate-sqlite-to-firestore.js
+```
+
+## 5. Comandos para mover los archivos
+
+Si querés hacerlo desde PowerShell:
+
+```powershell
+cd C:\Users\crist\Desktop\OFICINA DE CULTOS
+Rename-Item frontend client
+Rename-Item backend server
+Move-Item server\scripts\migrate-sqlite-to-firestore.js scripts\migrate-sqlite-to-firestore.js
+Remove-Item -Recurse -Force server\scripts
+```
+
+Luego crea el `package.json` raíz y actualiza los archivos de configuración.
+
+## 6. Despliegue en Vercel
+
+En Vercel, configura el proyecto con:
+
+- Root Directory: `client`
+- Build Command: `npm run build`
+- Output Directory: `.next`
+
+Y en el backend, usá Render/Heroku/Railway para dejar activo el servidor y apuntar `NEXT_PUBLIC_API_URL` a esa URL.
+
+---
+
+Si querés, aplico estos cambios exactamente en tu repo ahora y te paso el commit final listo para push. ¿Lo hago?

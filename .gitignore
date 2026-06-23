@@ -1,9 +1,10 @@
 node_modules/
 **/node_modules/
-frontend/.next/
-backend/database.sqlite
-backend/serviceAccountKey.json
-frontend/.env.local
+client/.next/
+server/database.sqlite
+server/serviceAccountKey.json
+client/.env.local
+server/.env
 .env
 .DS_Store
 cultosig-project.zip

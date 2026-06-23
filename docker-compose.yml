@@ -1,24 +1,24 @@
 version: '3.8'
 
 services:
-  backend:
+  server:
     build:
-      context: ./backend
+      context: ./server
     ports:
       - "5000:5000"
     volumes:
-      - ./backend/database.sqlite:/usr/src/app/database.sqlite
+      - ./server/database.sqlite:/usr/src/app/database.sqlite
     environment:
       - NODE_ENV=production
       - JWT_SECRET=${JWT_SECRET}
 
-  frontend:
+  client:
     build:
-      context: ./frontend
+      context: ./client
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - NEXT_PUBLIC_API_URL=http://localhost:5000/api
     depends_on:
-      - backend
+      - server

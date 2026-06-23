@@ -3,17 +3,17 @@
   Uso local: configurar FIREBASE_SERVICE_ACCOUNT (JSON) en env o colocar backend/serviceAccountKey.json
   Ejecutar: node backend/scripts/migrate-sqlite-to-firestore.js
 */
-const admin = require('../../firebaseAdmin');
+const admin = require('../server/firebaseAdmin');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 
 async function run() {
   if (!admin || !admin.firestore) {
-    console.error('Firebase Admin no inicializado. Configura FIREBASE_SERVICE_ACCOUNT o backend/serviceAccountKey.json');
+    console.error('Firebase Admin no inicializado. Configura FIREBASE_SERVICE_ACCOUNT o server/serviceAccountKey.json');
     process.exit(1);
   }
 
-  const dbPath = path.join(__dirname, '..', 'database.sqlite');
+  const dbPath = path.join(__dirname, '..', 'server', 'database.sqlite');
   const db = new sqlite3.Database(dbPath, sqlite3.OPEN_READONLY, (err) => {
     if (err) {
       console.error('No se pudo abrir database.sqlite:', err.message);

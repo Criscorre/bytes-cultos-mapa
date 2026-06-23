@@ -15,15 +15,15 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies (backend)
-        working-directory: ./backend
+      - name: Install dependencies (server)
+        working-directory: ./server
         run: npm install --production
 
       - name: Write Firebase service account
         run: |
-          echo "$FIREBASE_SERVICE_ACCOUNT" > backend/serviceAccountKey.json
+          echo "$FIREBASE_SERVICE_ACCOUNT" > server/serviceAccountKey.json
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
 
       - name: Run migration script
-        run: node backend/scripts/migrate-sqlite-to-firestore.js
+        run: node scripts/migrate-sqlite-to-firestore.js
